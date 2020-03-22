@@ -13,6 +13,7 @@
 
 var cookie = require('cookie')
 var deprecate = require('depd')('express-session')
+var debug = require('debug')('express-session');
 
 /**
  * Initialize a new `Cookie` with the given `options`.
@@ -34,6 +35,7 @@ var Cookie = module.exports = function Cookie(options) {
 
     for (var key in options) {
       if (key !== 'data') {
+        debug(`set cookie key to value ${key} = ${options[key]}`);
         this[key] = options[key]
       }
     }

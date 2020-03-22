@@ -11,6 +11,7 @@
  * Expose Session.
  */
 
+var debug = require('debug')('express-session');
 module.exports = Session;
 
 /**
@@ -22,6 +23,7 @@ module.exports = Session;
  */
 
 function Session(req, data) {
+  debug("Session %s", __filename)
   Object.defineProperty(this, 'req', { value: req });
   Object.defineProperty(this, 'id', { value: req.sessionID });
 
@@ -45,6 +47,7 @@ function Session(req, data) {
  */
 
 defineMethod(Session.prototype, 'touch', function touch() {
+  debug(`Session resetMaxAge via touch`);
   return this.resetMaxAge();
 });
 
@@ -56,6 +59,7 @@ defineMethod(Session.prototype, 'touch', function touch() {
  */
 
 defineMethod(Session.prototype, 'resetMaxAge', function resetMaxAge() {
+  debug(`reset max age maxAge = cookie.originalMaxAge ${this.cookie.originalMaxAge}`);
   this.cookie.maxAge = this.cookie.originalMaxAge;
   return this;
 });
@@ -69,6 +73,7 @@ defineMethod(Session.prototype, 'resetMaxAge', function resetMaxAge() {
  */
 
 defineMethod(Session.prototype, 'save', function save(fn) {
+  debug("Session save %s", __filename)
   this.req.sessionStore.set(this.id, this, fn || function(){});
   return this;
 });
@@ -86,6 +91,7 @@ defineMethod(Session.prototype, 'save', function save(fn) {
  */
 
 defineMethod(Session.prototype, 'reload', function reload(fn) {
+  debug("reload %s", this.id);
   var req = this.req
   var store = this.req.sessionStore
 
@@ -107,6 +113,7 @@ defineMethod(Session.prototype, 'reload', function reload(fn) {
  */
 
 defineMethod(Session.prototype, 'destroy', function destroy(fn) {
+  debug(`destroy session`);
   delete this.req.session;
   this.req.sessionStore.destroy(this.id, fn);
   return this;
@@ -121,6 +128,7 @@ defineMethod(Session.prototype, 'destroy', function destroy(fn) {
  */
 
 defineMethod(Session.prototype, 'regenerate', function regenerate(fn) {
+  debug(`Session regeneration`);
   this.req.sessionStore.regenerate(this.req, fn);
   return this;
 });

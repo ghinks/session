@@ -85,6 +85,7 @@ var defer = typeof setImmediate === 'function'
  */
 
 function session(options) {
+  debug(`session function called in express-session`);
   var opts = options || {}
 
   // get the cookie options
@@ -156,6 +157,7 @@ function session(options) {
 
   // generates the new session
   store.generate = function(req){
+    debug("store.generate called");
     req.sessionID = generateId(req);
     req.session = new Session(req);
     req.session.cookie = new Cookie(cookieOptions);
@@ -178,8 +180,10 @@ function session(options) {
 
   return function session(req, res, next) {
     // self-awareness
+    debug(`calling the function session created by express-session`);
     if (req.session) {
-      next()
+      debug(`HOW DID YOU GET A SESSION?`);
+      next();
       return
     }
 
@@ -193,7 +197,13 @@ function session(options) {
 
     // pathname mismatch
     var originalPath = parseUrl.original(req).pathname || '/'
-    if (originalPath.indexOf(cookieOptions.path || '/') !== 0) return next();
+    debug(`Path name is ${parseUrl.original(req).pathname}, index of ${cookieOptions.path} is ${originalPath.indexOf(cookieOptions.path)}`);
+    if (originalPath.indexOf(cookieOptions.path || '/') !== 0) {
+      debug(`calling next as path root ( begins at index 0 ) is not in cookie options`);
+      return next();
+    } else {
+      debug("path name matched")
+    }
 
     // ensure a secret is available or bail
     if (!secret && !req.secret) {
@@ -218,16 +228,19 @@ function session(options) {
 
     // set-cookie
     onHeaders(res, function(){
+      debug("OnHeaders Called ");
       if (!req.session) {
         debug('no session');
         return;
       }
 
       if (!shouldSetCookie(req)) {
+        debug("should not set cookie")
         return;
       }
 
       // only send secure cookies via https
+      debug("on headers test is secure?");
       if (req.session.cookie.secure && !issecure(req, trustProxy)) {
         debug('not secured');
         return;
@@ -357,6 +370,7 @@ function session(options) {
 
     // generate the session
     function generate() {
+      debug(`generate from the session function function`);
       store.generate(req);
       originalId = req.sessionID;
       originalHash = hash(req.session);
@@ -365,11 +379,14 @@ function session(options) {
 
     // inflate the session
     function inflate (req, sess) {
+      debug("inflating session");
       store.createSession(req, sess)
+      debug("created a session %s", req.sessionID);
       originalId = req.sessionID
       originalHash = hash(sess)
-
+      debug("inflate has original hash %s", originalHash);
       if (!resaveSession) {
+        debug("saving original hash as saved hash");
         savedHash = originalHash
       }
 
@@ -378,6 +395,7 @@ function session(options) {
 
     // wrap session methods
     function wrapmethods(sess) {
+      debug("wrapMethods %s", sess.id)
       var _reload = sess.reload
       var _save = sess.save;
 
@@ -412,7 +430,9 @@ function session(options) {
 
     // check if session has been modified
     function isModified(sess) {
-      return originalId !== sess.id || originalHash !== hash(sess);
+      var isit = originalId !== sess.id || originalHash !== hash(sess);
+      debug(`isModified ${isit}`);
+      return isit;
     }
 
     // check if session has been saved
@@ -451,14 +471,18 @@ function session(options) {
 
     // determine if cookie should be set on response
     function shouldSetCookie(req) {
+      debug("should set Cookie called");
       // cannot set cookie without a session ID
       if (typeof req.sessionID !== 'string') {
+        debug("we have a session Id already");
         return false;
       }
-
-      return cookieId !== req.sessionID
+      debug(`testing ... req.sessionId = ${req.sessionID} saveUnitializedSession = ${saveUninitializedSession} rollingSessions = ${rollingSessions} expires = ${req.session.cookie.expires}`);
+      const value = cookieId !== req.sessionID
         ? saveUninitializedSession || isModified(req.session)
         : rollingSessions || req.session.cookie.expires != null && isModified(req.session);
+      debug(`should set cookie set to ${!!value} for cookieId = ${cookieId}`);
+      return value;
     }
 
     // generate a session if the browser doesn't send a sessionID
@@ -522,6 +546,7 @@ function getcookie(req, name, secrets) {
 
   // read from cookie header
   if (header) {
+    debug(`there is a cookie header so try to find it ${header}`);
     var cookies = cookie.parse(header);
 
     raw = cookies[name];
@@ -538,10 +563,14 @@ function getcookie(req, name, secrets) {
         debug('cookie unsigned')
       }
     }
+  } else {
+    debug("no cookid header found ");
   }
+
 
   // back-compat read from cookieParser() signedCookies data
   if (!val && req.signedCookies) {
+    debug(`back compat read for signed cookies`)
     val = req.signedCookies[name];
 
     if (val) {
@@ -551,6 +580,7 @@ function getcookie(req, name, secrets) {
 
   // back-compat read from cookieParser() cookies data
   if (!val && req.cookies) {
+    debug('!val && req.cookies back compat');
     raw = req.cookies[name];
 
     if (raw) {
@@ -570,7 +600,7 @@ function getcookie(req, name, secrets) {
       }
     }
   }
-
+  debug(`result from get cookie is ${val}`);
   return val;
 }
 
@@ -611,27 +641,33 @@ function hash(sess) {
 
 function issecure(req, trustProxy) {
   // socket is https server
+  debug('issecure called')
   if (req.connection && req.connection.encrypted) {
+    debug('encrypted, this connection is encrypted therefore secure');
     return true;
   }
 
   // do not trust proxy
   if (trustProxy === false) {
+    debug('don\'t  trust proxy therefore not secure');
     return false;
   }
 
   // no explicit trust; try req.secure from express
   if (trustProxy !== true) {
+    debug('no explicit trust');
+
     return req.secure === true
   }
 
-  // read the proto from x-forwarded-proto header
   var header = req.headers['x-forwarded-proto'] || '';
+  // read the proto from x-forwarded-proto header
+  debug("was the x-forwarded-proto header set %s", header);
   var index = header.indexOf(',');
   var proto = index !== -1
     ? header.substr(0, index).toLowerCase().trim()
     : header.toLowerCase().trim()
-
+  debug(`Proto header was ${proto}`);
   return proto === 'https';
 }
 
