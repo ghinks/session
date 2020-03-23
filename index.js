@@ -481,7 +481,7 @@ function session(options) {
       const value = cookieId !== req.sessionID
         ? saveUninitializedSession || isModified(req.session)
         : rollingSessions || req.session.cookie.expires != null && isModified(req.session);
-      debug(`should set cookie set to ${!!value} for cookieId = ${cookieId}`);
+      debug(`should set cookie set to ${!!value} for cookieId = ${req.sessionID}`);
       return value;
     }
 
