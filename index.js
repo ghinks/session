@@ -395,12 +395,12 @@ function session(options) {
 
     // wrap session methods
     function wrapmethods(sess) {
-      debug("wrapMethods %s", sess.id)
+      debug("wrapMethods for session id %s", sess.id)
       var _reload = sess.reload
       var _save = sess.save;
 
       function reload(callback) {
-        debug('reloading %s', this.id)
+        debug('wrapmethods wrapped reloading was called %s', this.id)
         _reload.call(this, function () {
           wrapmethods(req.session)
           callback.apply(this, arguments)
