@@ -1,3 +1,23 @@
+const {
+  cookie,
+  createServer,
+  createRequestListener,
+  createSession,
+  end,
+  expires,
+  mountAt,
+  shouldNotHaveHeader,
+  shouldSetCookie,
+  shouldSetCookieToDifferentSessionId,
+  shouldNotSetSessionInStore,
+  shouldSetCookieToExpireIn,
+  shouldSetCookieToValue,
+  shouldSetCookieWithAttribute,
+  shouldSetCookieWithAttributeAndValue,
+  shouldSetCookieWithoutAttribute,
+  shouldSetSessionInStore,
+  sid
+} = require('../support/testUtils')
 
 var after = require('after')
 var assert = require('assert')
@@ -7,287 +27,17 @@ var fs = require('fs')
 var http = require('http')
 var https = require('https')
 var request = require('supertest')
-var session = require('../')
-var SmartStore = require('./support/smart-store')
-var SyncStore = require('./support/sync-store')
-var utils = require('./support/utils')
+var session = require('../../index')
+var SmartStore = require('../support/smart-store')
+var SyncStore = require('../support/sync-store')
+var utils = require('../support/utils')
+var path = require('path')
 
-var Cookie = require('../session/cookie')
+var Cookie = require('../../session/cookie')
 
 var min = 60 * 1000;
 
 describe('session()', function(){
-  it('should export constructors', function(){
-    assert.strictEqual(typeof session.Session, 'function')
-    assert.strictEqual(typeof session.Store, 'function')
-    assert.strictEqual(typeof session.MemoryStore, 'function')
-  })
-
-  it('should do nothing if req.session exists', function(done){
-    function setup (req) {
-      req.session = {}
-    }
-
-    request(createServer(setup))
-    .get('/')
-    .expect(shouldNotHaveHeader('Set-Cookie'))
-    .expect(200, done)
-  })
-
-  it('should error without secret', function(done){
-    request(createServer({ secret: undefined }))
-    .get('/')
-    .expect(500, /secret.*required/, done)
-  })
-
-  it('should get secret from req.secret', function(done){
-    function setup (req) {
-      req.secret = 'keyboard cat'
-    }
-
-    request(createServer(setup, { secret: undefined }))
-    .get('/')
-    .expect(200, '', done)
-  })
-
-  it('should create a new session', function (done) {
-    var store = new session.MemoryStore()
-    var server = createServer({ store: store }, function (req, res) {
-      req.session.active = true
-      res.end('session active')
-    });
-
-    request(server)
-    .get('/')
-    .expect(shouldSetCookie('connect.sid'))
-    .expect(200, 'session active', function (err, res) {
-      if (err) return done(err)
-      store.length(function (err, len) {
-        if (err) return done(err)
-        assert.strictEqual(len, 1)
-        done()
-      })
-    })
-  })
-
-  it('should load session from cookie sid', function (done) {
-    var count = 0
-    var server = createServer(null, function (req, res) {
-      req.session.num = req.session.num || ++count
-      res.end('session ' + req.session.num)
-    });
-
-    request(server)
-    .get('/')
-    .expect(shouldSetCookie('connect.sid'))
-    .expect(200, 'session 1', function (err, res) {
-      if (err) return done(err)
-      request(server)
-      .get('/')
-      .set('Cookie', cookie(res))
-      .expect(200, 'session 1', done)
-    })
-  })
-
-  it('should pass session fetch error', function (done) {
-    var store = new session.MemoryStore()
-    var server = createServer({ store: store }, function (req, res) {
-      res.end('hello, world')
-    })
-
-    store.get = function destroy(sid, callback) {
-      callback(new Error('boom!'))
-    }
-
-    request(server)
-    .get('/')
-    .expect(shouldSetCookie('connect.sid'))
-    .expect(200, 'hello, world', function (err, res) {
-      if (err) return done(err)
-      request(server)
-      .get('/')
-      .set('Cookie', cookie(res))
-      .expect(500, 'boom!', done)
-    })
-  })
-
-  it('should treat ENOENT session fetch error as not found', function (done) {
-    var count = 0
-    var store = new session.MemoryStore()
-    var server = createServer({ store: store }, function (req, res) {
-      req.session.num = req.session.num || ++count
-      res.end('session ' + req.session.num)
-    })
-
-    store.get = function destroy(sid, callback) {
-      var err = new Error('boom!')
-      err.code = 'ENOENT'
-      callback(err)
-    }
-
-    request(server)
-    .get('/')
-    .expect(shouldSetCookie('connect.sid'))
-    .expect(200, 'session 1', function (err, res) {
-      if (err) return done(err)
-      request(server)
-      .get('/')
-      .set('Cookie', cookie(res))
-      .expect(200, 'session 2', done)
-    })
-  })
-
-  it('should create multiple sessions', function (done) {
-    var cb = after(2, check)
-    var count = 0
-    var store = new session.MemoryStore()
-    var server = createServer({ store: store }, function (req, res) {
-      var isnew = req.session.num === undefined
-      req.session.num = req.session.num || ++count
-      res.end('session ' + (isnew ? 'created' : 'updated'))
-    });
-
-    function check(err) {
-      if (err) return done(err)
-      store.all(function (err, sess) {
-        if (err) return done(err)
-        assert.strictEqual(Object.keys(sess).length, 2)
-        done()
-      })
-    }
-
-    request(server)
-    .get('/')
-    .expect(200, 'session created', cb)
-
-    request(server)
-    .get('/')
-    .expect(200, 'session created', cb)
-  })
-
-  it('should handle empty req.url', function (done) {
-    function setup (req) {
-      req.url = ''
-    }
-
-    request(createServer(setup))
-    .get('/')
-    .expect(shouldSetCookie('connect.sid'))
-    .expect(200, done)
-  })
-
-  it('should handle multiple res.end calls', function(done){
-    var server = createServer(null, function (req, res) {
-      res.setHeader('Content-Type', 'text/plain')
-      res.end('Hello, world!')
-      res.end()
-    })
-
-    request(server)
-    .get('/')
-    .expect('Content-Type', 'text/plain')
-    .expect(200, 'Hello, world!', done);
-  })
-
-  it('should handle res.end(null) calls', function (done) {
-    var server = createServer(null, function (req, res) {
-      res.end(null)
-    })
-
-    request(server)
-    .get('/')
-    .expect(200, '', done)
-  })
-
-  it('should handle reserved properties in storage', function (done) {
-    var count = 0
-    var sid
-    var store = new session.MemoryStore()
-    var server = createServer({ store: store }, function (req, res) {
-      sid = req.session.id
-      req.session.num = req.session.num || ++count
-      res.end('session saved')
-    })
-
-    request(server)
-    .get('/')
-    .expect(200, 'session saved', function (err, res) {
-      if (err) return done(err)
-      store.get(sid, function (err, sess) {
-        if (err) return done(err)
-        // save is reserved
-        sess.save = 'nope'
-        store.set(sid, sess, function (err) {
-          if (err) return done(err)
-          request(server)
-          .get('/')
-          .set('Cookie', cookie(res))
-          .expect(200, 'session saved', done)
-        })
-      })
-    })
-  })
-
-  it('should only have session data enumerable (and cookie)', function (done) {
-    var server = createServer(null, function (req, res) {
-      req.session.test1 = 1
-      req.session.test2 = 'b'
-      res.end(Object.keys(req.session).sort().join(','))
-    })
-
-    request(server)
-    .get('/')
-    .expect(200, 'cookie,test1,test2', done)
-  })
-
-  it('should not save with bogus req.sessionID', function (done) {
-    var store = new session.MemoryStore()
-    var server = createServer({ store: store }, function (req, res) {
-      req.sessionID = function () {}
-      req.session.test1 = 1
-      req.session.test2 = 'b'
-      res.end()
-    })
-
-    request(server)
-    .get('/')
-    .expect(shouldNotHaveHeader('Set-Cookie'))
-    .expect(200, function (err) {
-      if (err) return done(err)
-      store.length(function (err, length) {
-        if (err) return done(err)
-        assert.strictEqual(length, 0)
-        done()
-      })
-    })
-  })
-
-  it('should update cookie expiration when slow write', function (done) {
-    var server = createServer({ rolling: true }, function (req, res) {
-      req.session.user = 'bob'
-      res.write('hello, ')
-      setTimeout(function () {
-        res.end('world!')
-      }, 200)
-    })
-
-    request(server)
-    .get('/')
-    .expect(shouldSetCookie('connect.sid'))
-    .expect(200, function (err, res) {
-      if (err) return done(err);
-      var originalExpires = expires(res);
-      setTimeout(function () {
-        request(server)
-        .get('/')
-        .set('Cookie', cookie(res))
-        .expect(shouldSetCookie('connect.sid'))
-        .expect(function (res) { assert.notStrictEqual(originalExpires, expires(res)); })
-        .expect(200, done);
-      }, (1000 - (Date.now() % 1000) + 200));
-    });
-  });
-
   describe('when response ended', function () {
     it('should have saved session', function (done) {
       var saved = false
@@ -1908,9 +1658,9 @@ describe('session()', function(){
         })
 
         it('should set cookie when secure', function (done) {
-          var cert = fs.readFileSync(__dirname + '/fixtures/server.crt', 'ascii')
+          var cert = fs.readFileSync(path.join(__dirname + '/../fixtures/server.crt'), 'ascii')
           var server = https.createServer({
-            key: fs.readFileSync(__dirname + '/fixtures/server.key', 'ascii'),
+            key: fs.readFileSync(path.join(__dirname + '/../fixtures/server.key'), 'ascii'),
             cert: cert
           })
 
@@ -2196,189 +1946,3 @@ describe('session()', function(){
   })
 })
 
-function cookie(res) {
-  var setCookie = res.headers['set-cookie'];
-  return (setCookie && setCookie[0]) || undefined;
-}
-
-function createServer (options, respond) {
-  var fn = respond
-  var opts = options
-  var server = http.createServer()
-
-  // setup, options, respond
-  if (typeof arguments[0] === 'function') {
-    opts = arguments[1]
-    fn = arguments[2]
-
-    server.on('request', arguments[0])
-  }
-
-  return server.on('request', createRequestListener(opts, fn))
-}
-
-function createRequestListener(opts, fn) {
-  var _session = createSession(opts)
-  var respond = fn || end
-
-  return function onRequest(req, res) {
-    var server = this
-
-    _session(req, res, function (err) {
-      if (err && !res._header) {
-        res.statusCode = err.status || 500
-        res.end(err.message)
-        return
-      }
-
-      if (err) {
-        server.emit('error', err)
-        return
-      }
-
-      respond(req, res)
-    })
-  }
-}
-
-function createSession(opts) {
-  var options = opts || {}
-
-  if (!('cookie' in options)) {
-    options.cookie = { maxAge: 60 * 1000 }
-  }
-
-  if (!('secret' in options)) {
-    options.secret = 'keyboard cat'
-  }
-
-  return session(options)
-}
-
-function end(req, res) {
-  res.end()
-}
-
-function expires (res) {
-  var header = cookie(res)
-  return header && utils.parseSetCookie(header).expires
-}
-
-function mountAt (path) {
-  return function (req, res) {
-    if (req.url.indexOf(path) === 0) {
-      req.originalUrl = req.url
-      req.url = req.url.slice(path.length)
-    }
-  }
-}
-
-function shouldNotHaveHeader(header) {
-  return function (res) {
-    assert.ok(!(header.toLowerCase() in res.headers), 'should not have ' + header + ' header')
-  }
-}
-
-function shouldNotSetSessionInStore(store) {
-  var _set = store.set
-  var count = 0
-
-  store.set = function set () {
-    count++
-    return _set.apply(this, arguments)
-  }
-
-  return function () {
-    assert.ok(count === 0, 'should not set session in store')
-  }
-}
-
-function shouldSetCookie (name) {
-  return function (res) {
-    var header = cookie(res)
-    var data = header && utils.parseSetCookie(header)
-    assert.ok(header, 'should have a cookie header')
-    assert.strictEqual(data.name, name, 'should set cookie ' + name)
-  }
-}
-
-function shouldSetCookieToDifferentSessionId (id) {
-  return function (res) {
-    assert.notStrictEqual(sid(res), id)
-  }
-}
-
-function shouldSetCookieToExpireIn (name, delta) {
-  return function (res) {
-    var header = cookie(res)
-    var data = header && utils.parseSetCookie(header)
-    assert.ok(header, 'should have a cookie header')
-    assert.strictEqual(data.name, name, 'should set cookie ' + name)
-    assert.ok(('expires' in data), 'should set cookie with attribute Expires')
-    assert.ok(('date' in res.headers), 'should have a date header')
-    assert.strictEqual((Date.parse(data.expires) - Date.parse(res.headers.date)), delta, 'should set cookie ' + name + ' to expire in ' + delta + ' ms')
-  }
-}
-
-function shouldSetCookieToValue (name, val) {
-  return function (res) {
-    var header = cookie(res)
-    var data = header && utils.parseSetCookie(header)
-    assert.ok(header, 'should have a cookie header')
-    assert.strictEqual(data.name, name, 'should set cookie ' + name)
-    assert.strictEqual(data.value, val, 'should set cookie ' + name + ' to ' + val)
-  }
-}
-
-function shouldSetCookieWithAttribute (name, attrib) {
-  return function (res) {
-    var header = cookie(res)
-    var data = header && utils.parseSetCookie(header)
-    assert.ok(header, 'should have a cookie header')
-    assert.strictEqual(data.name, name, 'should set cookie ' + name)
-    assert.ok((attrib.toLowerCase() in data), 'should set cookie with attribute ' + attrib)
-  }
-}
-
-function shouldSetCookieWithAttributeAndValue (name, attrib, value) {
-  return function (res) {
-    var header = cookie(res)
-    var data = header && utils.parseSetCookie(header)
-    assert.ok(header, 'should have a cookie header')
-    assert.strictEqual(data.name, name, 'should set cookie ' + name)
-    assert.ok((attrib.toLowerCase() in data), 'should set cookie with attribute ' + attrib)
-    assert.strictEqual(data[attrib.toLowerCase()], value, 'should set cookie with attribute ' + attrib + ' set to ' + value)
-  }
-}
-
-function shouldSetCookieWithoutAttribute (name, attrib) {
-  return function (res) {
-    var header = cookie(res)
-    var data = header && utils.parseSetCookie(header)
-    assert.ok(header, 'should have a cookie header')
-    assert.strictEqual(data.name, name, 'should set cookie ' + name)
-    assert.ok(!(attrib.toLowerCase() in data), 'should set cookie without attribute ' + attrib)
-  }
-}
-
-function shouldSetSessionInStore(store) {
-  var _set = store.set
-  var count = 0
-
-  store.set = function set () {
-    count++
-    return _set.apply(this, arguments)
-  }
-
-  return function () {
-    assert.ok(count === 1, 'should set session in store')
-  }
-}
-
-function sid (res) {
-  var header = cookie(res)
-  var data = header && utils.parseSetCookie(header)
-  var value = data && unescape(data.value)
-  var sid = value && value.substring(2, value.indexOf('.'))
-  return sid || undefined
-}

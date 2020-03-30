@@ -40,7 +40,7 @@
   },
   "scripts": {
     "lint": "eslint --plugin markdown --ext js,md . && node ./scripts/lint-readme.js",
-    "test": "mocha --require test/support/env --check-leaks --bail --no-exit --reporter spec test/",
+    "test": "mocha --require test/support/env --check-leaks --bail --no-exit --reporter spec test/testing",
     "test-cov": "nyc npm test",
     "test-travis": "nyc npm test -- --no-exit",
     "version": "node scripts/version-history.js && git add HISTORY.md"
