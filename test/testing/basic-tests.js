@@ -237,6 +237,9 @@ describe('basic tests', function(){
 
   it('should not save with bogus req.sessionID', function (done) {
     var store = new session.MemoryStore()
+    // the session is set to a function, in shouldSetCookie the sessionID is checked
+    // if not a string, then shouldSetCookie will return false. So this is really a
+    // test of shouldSetCookie
     var server = createServer({ store: store }, function (req, res) {
       req.sessionID = function () {}
       req.session.test1 = 1

@@ -474,7 +474,9 @@ function session(options) {
       debug("should set Cookie called");
       // cannot set cookie without a session ID
       if (typeof req.sessionID !== 'string') {
-        debug("we have a session Id already");
+        debug(Array(100).join("*"))
+        debug("the sessionID was not a string, do not try to set it")
+        debug(Array(100).join("*"))
         return false;
       }
       debug(`testing ... req.sessionId = ${req.sessionID} saveUnitializedSession = ${saveUninitializedSession} rollingSessions = ${rollingSessions} expires = ${req.session.cookie.expires}`);
