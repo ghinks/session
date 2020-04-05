@@ -99,8 +99,9 @@ describe('new Cookie()', function () {
         var cookie = new Cookie({ maxAge: maxAge })
 
         assert.strictEqual(cookie.expires.getTime(), maxAge.getTime())
-        assert.ok(maxAge.getTime() - Date.now() - 1000 <= cookie.maxAge)
-        assert.ok(maxAge.getTime() - Date.now() + 1000 >= cookie.maxAge)
+        var x = maxAge.getTime() - Date.now();
+        assert.ok(x - 1000 <= cookie.maxAge)
+        assert.ok(x + 1000 >= cookie.maxAge)
       })
 
       it('should reject invalid types', function() {
