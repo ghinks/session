@@ -110,7 +110,8 @@ function shouldSetCookie (name) {
 
 function shouldSetCookieToDifferentSessionId (id) {
   return function (res) {
-    assert.notStrictEqual(sid(res), id)
+    var result = sid(res)
+    assert.notStrictEqual(result, id)
   }
 }
 
