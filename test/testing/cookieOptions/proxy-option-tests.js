@@ -2,7 +2,7 @@ const {
   createServer,
   shouldNotHaveHeader,
   shouldSetCookie,
-} = require('../support/testUtils')
+} = require('../../support/testUtils')
 
 var request = require('supertest')
 

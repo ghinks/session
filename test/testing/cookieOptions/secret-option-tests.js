@@ -2,11 +2,11 @@ const {
   cookie,
   createServer,
   shouldSetCookie,
-} = require('../support/testUtils')
+} = require('../../support/testUtils')
 
 var assert = require('assert')
 var request = require('supertest')
-var session = require('../../index')
+var session = require('../../../index')
 describe('secret option', function () {
   it('should reject empty arrays', function () {
     assert.throws(createServer.bind(null, { secret: [] }), /secret option array/);

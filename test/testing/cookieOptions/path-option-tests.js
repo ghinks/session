@@ -5,11 +5,11 @@ const {
   shouldSetCookie,
   shouldSetCookieWithAttribute,
   shouldSetCookieWithoutAttribute,
-} = require('../support/testUtils')
+} = require('../../support/testUtils')
 
 var request = require('supertest')
 
-describe('cookie option', function () {
+describe('cookie path option', function () {
   describe('when "path" set to "/foo/bar"', function () {
     before(function () {
       this.server = createServer({ cookie: { path: '/foo/bar' } })
