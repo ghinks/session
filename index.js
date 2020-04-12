@@ -479,7 +479,7 @@ function session(options) {
         debug(Array(100).join("*"))
         return false;
       }
-      debug(`testing ... req.sessionId = ${req.sessionID} saveUnitializedSession = ${saveUninitializedSession} rollingSessions = ${rollingSessions} expires = ${req.session.cookie.expires}`);
+      debug(`testing ... cookieId = ${cookieId} req.sessionId = ${req.sessionID} saveUnitializedSession = ${saveUninitializedSession} rollingSessions = ${rollingSessions} expires = ${req.session.cookie.expires}`);
       const value = cookieId !== req.sessionID
         ? saveUninitializedSession || isModified(req.session)
         : rollingSessions || req.session.cookie.expires != null && isModified(req.session);

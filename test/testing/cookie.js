@@ -109,6 +109,12 @@ describe('new Cookie()', function () {
         assert.throws(function() { new Cookie({ maxAge: true }) }, /maxAge/)
         assert.throws(function() { new Cookie({ maxAge: function () {} }) }, /maxAge/)
       })
+
+      it('should throw an exception with maxAge of undefined', function() {
+        var maxAge = undefined
+        var cookie = new Cookie({maxAge: maxAge})
+        assert.ok(cookie.maxAge === undefined)
+      })
     })
 
     describe('path', function () {
