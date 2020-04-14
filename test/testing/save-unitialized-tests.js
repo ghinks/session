@@ -9,12 +9,12 @@ const {
 var after = require('after')
 var assert = require('assert')
 var request = require('supertest')
-var session = require('../../index')
+var MemoryStore = require('../../index').MemoryStore
 var min = 60 * 1000;
 
 describe('saveUninitialized option', function(){
   it('should default to true', function(done){
-    var store = new session.MemoryStore()
+    var store = new MemoryStore()
     var server = createServer({ store: store })
 
     request(server)
@@ -25,7 +25,7 @@ describe('saveUninitialized option', function(){
   });
 
   it('should force save of uninitialized session', function(done){
-    var store = new session.MemoryStore()
+    var store = new MemoryStore()
     var server = createServer({ store: store, saveUninitialized: true })
 
     request(server)
@@ -36,7 +36,7 @@ describe('saveUninitialized option', function(){
   });
 
   it('should prevent save of uninitialized session', function(done){
-    var store = new session.MemoryStore()
+    var store = new MemoryStore()
     var server = createServer({ store: store, saveUninitialized: false })
 
     request(server)
@@ -47,7 +47,7 @@ describe('saveUninitialized option', function(){
   });
 
   it('should still save modified session', function(done){
-    var store = new session.MemoryStore()
+    var store = new MemoryStore()
     var server = createServer({ store: store, saveUninitialized: false }, function (req, res) {
       req.session.count = req.session.count || 0
       req.session.count++
@@ -63,7 +63,7 @@ describe('saveUninitialized option', function(){
 
   it('should pass session save error', function (done) {
     var cb = after(2, done)
-    var store = new session.MemoryStore()
+    var store = new MemoryStore()
     var server = createServer({ store: store, saveUninitialized: true }, function (req, res) {
       res.end('session saved')
     })
@@ -85,7 +85,7 @@ describe('saveUninitialized option', function(){
 
   it('should prevent uninitialized session from being touched', function (done) {
     var cb = after(1, done)
-    var store = new session.MemoryStore()
+    var store = new MemoryStore()
     var server = createServer({ saveUninitialized: false, store: store, cookie: { maxAge: min } }, function (req, res) {
       res.end()
     })
