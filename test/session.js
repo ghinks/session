@@ -757,7 +757,7 @@ describe('session()', function(){
 
       it('should set cookie for "/foo/bar" request', function (done) {
         request(this.server)
-        .get('/foo/bar/baz')
+        .get('/foo/bar')
         .expect(shouldSetCookie('connect.sid'))
         .expect(200, done)
       })
