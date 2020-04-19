@@ -173,9 +173,10 @@ describe('req.session', function(){
         .expect(shouldSetCookie('connect.sid'))
         .expect(200, function (err, res) {
           if (err) return done(err)
+          const cookieValue = cookie(res)
           request(server)
             .get('/')
-            .set('Cookie', cookie(res))
+            .set('Cookie',cookieValue)
             .expect(shouldSetCookie('connect.sid'))
             .expect(shouldSetCookieToDifferentSessionId(sid(res)))
             .expect(200, 'false', done)

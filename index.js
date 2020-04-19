@@ -458,9 +458,10 @@ function session(options) {
       debug(`saveUninitialized = ${saveUninitializedSession}, cookieId !== req.sessionID ${cookieId !== req.sessionID}`)
       debug(`cookieId = ${cookieId}, req.sessionID = ${req.sessionID}`)
       debug('=================================================')
-      return !saveUninitializedSession && cookieId !== req.sessionID
+      const result = !saveUninitializedSession && cookieId !== req.sessionID
         ? isModified(req.session)
         : !isSaved(req.session)
+      return result;
     }
 
     // determine if session should be touched
